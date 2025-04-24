@@ -25,7 +25,12 @@ SECRET_KEY = 'django-insecure-=)gf$mfdbl+nwgc0arl6g=2+q%-&nwszsuj%o0mt1*61h3$&a+
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['127.0.0.1', 'localhost',
+                 '456d-2a0d-5600-32-9003-897f-c88d-94e5-510d.ngrok-free.app']
+
+CSRF_TRUSTED_ORIGINS = [
+    "https://456d-2a0d-5600-32-9003-897f-c88d-94e5-510d.ngrok-free.app",
+]                 
 
 
 # Application definition
@@ -78,8 +83,12 @@ WSGI_APPLICATION = 'kanoon.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'kanoon',
+        'USER': 'root',
+        'PASSWORD': 'password123',
+        'HOST': 'localhost',
+        'PORT': '3306',
     }
 }
 
