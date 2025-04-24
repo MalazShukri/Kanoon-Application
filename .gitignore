@@ -27,11 +27,12 @@ db.sqlite3
 media/
 static/
 local_settings.py
+kanoon/kanoon/settings.py
 
 # Virtual Environment
 venv/
 ENV/
-
+env/
 # IDE
 .idea/
 .vscode/
