@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import User, Student, PhoneVerification
+from .models import *
 
 class PhoneVerificationSerializer(serializers.ModelSerializer):
     class Meta:
@@ -37,3 +37,62 @@ class UserSignupSerializer(serializers.Serializer):
 
 class UserLoginSerializer(serializers.Serializer):
     phone_number = serializers.CharField(max_length=15)
+
+
+class StudentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Student
+        fields = '__all__'
+
+
+class CategorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Category
+        fields = '__all__'
+
+
+class SubCategorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SubCategory
+        fields = '__all__'
+
+
+class ItemSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Item
+        fields = '__all__'
+
+
+class QuestionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Question
+        fields = '__all__'
+
+
+class AnswerSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Answer
+        fields = '__all__'
+
+
+class PaymentSerializer(serializers.ModelSerializer):
+    student_name = serializers.CharField(
+        source='student.full_name', read_only=True)
+    student_id = serializers.CharField(
+        source='student.user.id', read_only=True)
+    subject = serializers.CharField(source='item.title', read_only=True)
+    subcategory = serializers.CharField(
+        source='item.subcategory.title', read_only=True)
+    category = serializers.CharField(
+        source='item.subcategory.category.title', read_only=True)
+
+    class Meta:
+        model = Payment
+        fields = ['id', 'student_id', 'student_name', 'category',
+                  'subcategory', 'subject', 'amount', 'date']
+
+
+class NotificationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Notification
+        fields = ['id', 'message', 'date', 'time']

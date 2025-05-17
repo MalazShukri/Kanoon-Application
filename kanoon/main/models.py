@@ -59,3 +59,72 @@ class PhoneVerification(models.Model):
 
     def __str__(self):
         return f"{self.phone_number} - {self.is_verified}"
+
+class Category(models.Model):
+    title = models.CharField(max_length=255)
+    image = models.ImageField(upload_to='category_images/')
+
+    def __str__(self):
+        return self.title
+
+class SubCategory(models.Model):
+    category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name='subcategories')
+    title = models.CharField(max_length=255)
+    image = models.ImageField(upload_to='subcategory_images/')
+
+    def __str__(self):
+        return f"{self.category.title} - {self.title}"
+
+
+class Item(models.Model):
+    subcategory = models.ForeignKey(
+        SubCategory, on_delete=models.CASCADE, related_name='items')
+    title = models.CharField(max_length=255)
+    image = models.ImageField(upload_to='item_images/')
+    price = models.DecimalField(max_digits=10, decimal_places=2)
+
+
+    def __str__(self):
+        return f"{self.subcategory.title} - {self.title}"
+
+
+class Question(models.Model):
+    item = models.ForeignKey(
+        Item, on_delete=models.CASCADE, related_name='questions')
+    text = models.TextField()
+
+    def __str__(self):
+        return f"Question for {self.item.title}: {self.text}"
+
+
+class Answer(models.Model):
+    question = models.ForeignKey(
+        Question, on_delete=models.CASCADE, related_name='answers')
+    option_label = models.CharField(
+        max_length=1,
+        choices=[('A', 'A'), ('B', 'B'), ('C', 'C'), ('D', 'D')],
+    )
+    answer_text = models.TextField()
+    is_correct = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"{self.question.id} - {self.option_label}: {self.answer_text}"
+
+
+class Payment(models.Model):
+    student = models.ForeignKey(Student, on_delete=models.CASCADE)
+    item = models.ForeignKey(Item, on_delete=models.SET_NULL, null=True)
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    date = models.DateField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.student.full_name} - {self.item.title} - {self.amount}$"
+
+
+class Notification(models.Model):
+    message = models.TextField()
+    date = models.DateField(auto_now_add=True)
+    time = models.TimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.message[:50]

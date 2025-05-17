@@ -1,14 +1,17 @@
 from rest_framework import status
+from rest_framework import viewsets
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
 from rest_framework_simplejwt.tokens import RefreshToken
-from django.utils import timezone
-from .models import User, Student, PhoneVerification
-from .serializers import (
-    PhoneVerificationSerializer, PhoneNumberOnlySerializer, StudentSerializer, UserSignupSerializer, UserLoginSerializer
-)
+from .models import *
+from .serializers import *
 from django.core.files.uploadedfile import InMemoryUploadedFile, TemporaryUploadedFile
+from .permissions import IsAdminOrReadOnly, IsOwnerOrAdminOrReadOnly
+from rest_framework.permissions import IsAdminUser
+
+
+
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
@@ -117,3 +120,51 @@ def verify_signup_code(request):
     # Clear session after signup
     del request.session['signup_data']
     return Response({'refresh': str(refresh), 'access': str(refresh.access_token)}, status=status.HTTP_201_CREATED)
+
+
+class StudentViewSet(viewsets.ModelViewSet):
+    queryset = Student.objects.all()
+    serializer_class = StudentSerializer
+    permission_classes = [IsOwnerOrAdminOrReadOnly]
+
+
+class CategoryViewSet(viewsets.ModelViewSet):
+    queryset = Category.objects.all()
+    serializer_class = CategorySerializer
+    permission_classes = [IsAdminOrReadOnly]
+
+
+class SubCategoryViewSet(viewsets.ModelViewSet):
+    queryset = SubCategory.objects.all()
+    serializer_class = SubCategorySerializer
+    permission_classes = [IsAdminOrReadOnly]
+
+
+class ItemViewSet(viewsets.ModelViewSet):
+    queryset = Item.objects.all()
+    serializer_class = ItemSerializer
+    permission_classes = [IsAdminOrReadOnly]
+
+
+class QuestionViewSet(viewsets.ModelViewSet):
+    queryset = Question.objects.all()
+    serializer_class = QuestionSerializer
+    permission_classes = [IsAdminOrReadOnly]
+
+
+class AnswerViewSet(viewsets.ModelViewSet):
+    queryset = Answer.objects.all()
+    serializer_class = AnswerSerializer
+    permission_classes = [IsAdminOrReadOnly]
+
+
+class PaymentViewSet(viewsets.ModelViewSet):
+    queryset = Payment.objects.all().order_by('-date')
+    serializer_class = PaymentSerializer
+    permission_classes = [IsAdminUser]
+
+
+class NotificationViewSet(viewsets.ModelViewSet):
+    queryset = Notification.objects.all().order_by('-date', '-time')
+    serializer_class = NotificationSerializer
+    permission_classes = [IsAdminUser]
