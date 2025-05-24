@@ -1,14 +1,13 @@
 from rest_framework import status
-from rest_framework import viewsets
+from rest_framework.views import APIView
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import IsAuthenticated, IsAdminUser, AllowAny
 from rest_framework_simplejwt.tokens import RefreshToken
+from django.shortcuts import get_object_or_404
 from .models import *
 from .serializers import *
-from django.core.files.uploadedfile import InMemoryUploadedFile, TemporaryUploadedFile
-from .permissions import IsAdminOrReadOnly, IsOwnerOrAdminOrReadOnly
-from rest_framework.permissions import IsAdminUser
+
 
 
 
@@ -122,49 +121,375 @@ def verify_signup_code(request):
     return Response({'refresh': str(refresh), 'access': str(refresh.access_token)}, status=status.HTTP_201_CREATED)
 
 
-class StudentViewSet(viewsets.ModelViewSet):
-    queryset = Student.objects.all()
-    serializer_class = StudentSerializer
-    permission_classes = [IsOwnerOrAdminOrReadOnly]
+# ---------------------- Generic API ---------------------
+class GenericAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get_permissions(self):
+        self.model_name = getattr(self, 'model_name', '')
+        return [perm() for perm in self.permission_classes]
 
 
-class CategoryViewSet(viewsets.ModelViewSet):
-    queryset = Category.objects.all()
-    serializer_class = CategorySerializer
-    permission_classes = [IsAdminOrReadOnly]
+# ---------------------- Student ----------------------
+
+class StudentListCreateView(GenericAPIView):
+    model_name = 'student'
+
+    def get(self, request):
+        if request.user.is_staff:
+            students = Student.objects.all()
+        else:
+            students = Student.objects.filter(user=request.user)
+        serializer = StudentSerializer(students, many=True)
+        return Response(serializer.data)
+
+    def post(self, request):
+        serializer = StudentSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save(user=request.user)
+            return Response(serializer.data, status=201)
+        return Response(serializer.errors, status=400)
 
 
-class SubCategoryViewSet(viewsets.ModelViewSet):
-    queryset = SubCategory.objects.all()
-    serializer_class = SubCategorySerializer
-    permission_classes = [IsAdminOrReadOnly]
+class StudentDetailView(GenericAPIView):
+    model_name = 'student'
+
+    def get(self, request, pk):
+        student = get_object_or_404(Student, pk=pk)
+        if not request.user.is_staff and student.user != request.user:
+            return Response({'detail': 'Permission denied.'}, status=403)
+        serializer = StudentSerializer(student)
+        return Response(serializer.data)
+
+    def patch(self, request, pk):
+        student = get_object_or_404(Student, pk=pk)
+        if not request.user.is_staff and student.user != request.user:
+            return Response({'detail': 'Permission denied.'}, status=403)
+        serializer = StudentSerializer(
+            student, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=400)
+
+    def put(self, request, pk):
+        student = get_object_or_404(Student, pk=pk)
+        if not request.user.is_staff and student.user != request.user:
+            return Response({'detail': 'Permission denied.'}, status=403)
+        serializer = StudentSerializer(student, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=400)
+
+    def delete(self, request, pk):
+        if not request.user.is_staff:
+            return Response({'detail': 'Only admins can delete.'}, status=403)
+        student = get_object_or_404(Student, pk=pk)
+        student.delete()
+        return Response(status=204)
 
 
-class ItemViewSet(viewsets.ModelViewSet):
-    queryset = Item.objects.all()
-    serializer_class = ItemSerializer
-    permission_classes = [IsAdminOrReadOnly]
+# ---------------------- Category ----------------------
+
+class CategoryListCreateView(GenericAPIView):
+    model_name = 'category'
+
+    def get(self, request):
+        categories = Category.objects.all()
+        serializer = CategorySerializer(categories, many=True)
+        return Response(serializer.data)
+
+    def post(self, request):
+        if not request.user.is_staff:
+            return Response({'detail': 'Only admins can create.'}, status=403)
+        serializer = CategorySerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=201)
+        return Response(serializer.errors, status=400)
 
 
-class QuestionViewSet(viewsets.ModelViewSet):
-    queryset = Question.objects.all()
-    serializer_class = QuestionSerializer
-    permission_classes = [IsAdminOrReadOnly]
+class CategoryDetailView(GenericAPIView):
+    model_name = 'category'
+
+    def get(self, request, pk):
+        category = get_object_or_404(Category, pk=pk)
+        serializer = CategorySerializer(category)
+        return Response(serializer.data)
+
+    def put(self, request, pk):
+        if not request.user.is_staff:
+            return Response({'detail': 'Only admins can update.'}, status=403)
+        category = get_object_or_404(Category, pk=pk)
+        serializer = CategorySerializer(category, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=400)
+
+    def delete(self, request, pk):
+        if not request.user.is_staff:
+            return Response({'detail': 'Only admins can delete.'}, status=403)
+        category = get_object_or_404(Category, pk=pk)
+        category.delete()
+        return Response(status=204)
 
 
-class AnswerViewSet(viewsets.ModelViewSet):
-    queryset = Answer.objects.all()
-    serializer_class = AnswerSerializer
-    permission_classes = [IsAdminOrReadOnly]
+# ---------------------- SubCategory ----------------------
+
+class SubCategoryListCreateView(GenericAPIView):
+    model_name = 'subcategory'
+
+    def get(self, request):
+        objs = SubCategory.objects.all()
+        serializer = SubCategorySerializer(objs, many=True)
+        return Response(serializer.data)
+
+    def post(self, request):
+        if not request.user.is_staff:
+            return Response({'detail': 'Only admins can create.'}, status=403)
+        serializer = SubCategorySerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=201)
+        return Response(serializer.errors, status=400)
 
 
-class PaymentViewSet(viewsets.ModelViewSet):
-    queryset = Payment.objects.all().order_by('-date')
-    serializer_class = PaymentSerializer
-    permission_classes = [IsAdminUser]
+class SubCategoryDetailView(GenericAPIView):
+    model_name = 'subcategory'
+
+    def get(self, request, pk):
+        obj = get_object_or_404(SubCategory, pk=pk)
+        serializer = SubCategorySerializer(obj)
+        return Response(serializer.data)
+
+    def put(self, request, pk):
+        if not request.user.is_staff:
+            return Response({'detail': 'Only admins can update.'}, status=403)
+        obj = get_object_or_404(SubCategory, pk=pk)
+        serializer = SubCategorySerializer(obj, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=400)
+
+    def delete(self, request, pk):
+        if not request.user.is_staff:
+            return Response({'detail': 'Only admins can delete.'}, status=403)
+        obj = get_object_or_404(SubCategory, pk=pk)
+        obj.delete()
+        return Response(status=204)
 
 
-class NotificationViewSet(viewsets.ModelViewSet):
-    queryset = Notification.objects.all().order_by('-date', '-time')
-    serializer_class = NotificationSerializer
-    permission_classes = [IsAdminUser]
+# ---------------------- Item ----------------------
+
+class ItemListCreateView(GenericAPIView):
+    model_name = 'item'
+
+    def get(self, request):
+        items = Item.objects.all()
+        serializer = ItemSerializer(items, many=True)
+        return Response(serializer.data)
+
+    def post(self, request):
+        if not request.user.is_staff:
+            return Response({'detail': 'Only admins can create.'}, status=403)
+        serializer = ItemSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=201)
+        return Response(serializer.errors, status=400)
+
+
+class ItemDetailView(GenericAPIView):
+    model_name = 'item'
+
+    def get(self, request, pk):
+        item = get_object_or_404(Item, pk=pk)
+        serializer = ItemSerializer(item)
+        return Response(serializer.data)
+
+    def put(self, request, pk):
+        if not request.user.is_staff:
+            return Response({'detail': 'Only admins can update.'}, status=403)
+        item = get_object_or_404(Item, pk=pk)
+        serializer = ItemSerializer(item, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=400)
+
+    def delete(self, request, pk):
+        if not request.user.is_staff:
+            return Response({'detail': 'Only admins can delete.'}, status=403)
+        item = get_object_or_404(Item, pk=pk)
+        item.delete()
+        return Response(status=204)
+
+
+# ---------------------- Question ----------------------
+
+class QuestionListCreateView(GenericAPIView):
+    model_name = 'question'
+
+    def get(self, request):
+        questions = Question.objects.all()
+        serializer = QuestionSerializer(questions, many=True)
+        return Response(serializer.data)
+
+    def post(self, request):
+        if not request.user.is_staff:
+            return Response({'detail': 'Only admins can create.'}, status=403)
+        serializer = QuestionSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=201)
+        return Response(serializer.errors, status=400)
+
+
+class QuestionDetailView(GenericAPIView):
+    model_name = 'question'
+
+    def get(self, request, pk):
+        question = get_object_or_404(Question, pk=pk)
+        serializer = QuestionSerializer(question)
+        return Response(serializer.data)
+
+    def put(self, request, pk):
+        if not request.user.is_staff:
+            return Response({'detail': 'Only admins can update.'}, status=403)
+        question = get_object_or_404(Question, pk=pk)
+        serializer = QuestionSerializer(question, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=400)
+
+    def delete(self, request, pk):
+        if not request.user.is_staff:
+            return Response({'detail': 'Only admins can delete.'}, status=403)
+        question = get_object_or_404(Question, pk=pk)
+        question.delete()
+        return Response(status=204)
+
+
+# ---------------------- Answer ----------------------
+
+class AnswerListCreateView(GenericAPIView):
+    model_name = 'answer'
+
+    def get(self, request):
+        answers = Answer.objects.all()
+        serializer = AnswerSerializer(answers, many=True)
+        return Response(serializer.data)
+
+    def post(self, request):
+        if not request.user.is_staff:
+            return Response({'detail': 'Only admins can create.'}, status=403)
+        serializer = AnswerSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=201)
+        return Response(serializer.errors, status=400)
+
+
+class AnswerDetailView(GenericAPIView):
+    model_name = 'answer'
+
+    def get(self, request, pk):
+        answer = get_object_or_404(Answer, pk=pk)
+        serializer = AnswerSerializer(answer)
+        return Response(serializer.data)
+
+    def put(self, request, pk):
+        if not request.user.is_staff:
+            return Response({'detail': 'Only admins can update.'}, status=403)
+        answer = get_object_or_404(Answer, pk=pk)
+        serializer = AnswerSerializer(answer, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=400)
+
+    def delete(self, request, pk):
+        if not request.user.is_staff:
+            return Response({'detail': 'Only admins can delete.'}, status=403)
+        answer = get_object_or_404(Answer, pk=pk)
+        answer.delete()
+        return Response(status=204)
+
+
+# ---------------------- Payment ----------------------
+
+class PaymentListCreateView(GenericAPIView):
+    model_name = 'payment'
+
+    def get(self, request):
+        if request.user.is_staff:
+            payments = Payment.objects.all()
+        else:
+            payments = Payment.objects.filter(student__user=request.user)
+        serializer = PaymentSerializer(payments, many=True)
+        return Response(serializer.data)
+
+    def post(self, request):
+        serializer = PaymentSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=201)
+        return Response(serializer.errors, status=400)
+
+
+class PaymentDetailView(GenericAPIView):
+    model_name = 'payment'
+
+    def get(self, request, pk):
+        payment = get_object_or_404(Payment, pk=pk)
+        if not request.user.is_staff and payment.student.user != request.user:
+            return Response({'detail': 'Permission denied.'}, status=403)
+        serializer = PaymentSerializer(payment)
+        return Response(serializer.data)
+
+    def delete(self, request, pk):
+        if not request.user.is_staff:
+            return Response({'detail': 'Only admins can delete.'}, status=403)
+        payment = get_object_or_404(Payment, pk=pk)
+        payment.delete()
+        return Response(status=204)
+
+
+# ---------------------- Notification ----------------------
+
+class NotificationListCreateView(GenericAPIView):
+    model_name = 'notification'
+
+    def get(self, request):
+        notifications = Notification.objects.all()
+        serializer = NotificationSerializer(notifications, many=True)
+        return Response(serializer.data)
+
+    def post(self, request):
+        if not request.user.is_staff:
+            return Response({'detail': 'Only admins can create.'}, status=403)
+        serializer = NotificationSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=201)
+        return Response(serializer.errors, status=400)
+
+
+class NotificationDetailView(GenericAPIView):
+    model_name = 'notification'
+
+    def get(self, request, pk):
+        notification = get_object_or_404(Notification, pk=pk)
+        serializer = NotificationSerializer(notification)
+        return Response(serializer.data)
+
+    def delete(self, request, pk):
+        if not request.user.is_staff:
+            return Response({'detail': 'Only admins can delete.'}, status=403)
+        notification = get_object_or_404(Notification, pk=pk)
+        notification.delete()
+        return Response(status=204)

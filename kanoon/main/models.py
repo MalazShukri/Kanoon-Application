@@ -3,9 +3,12 @@ from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, Permis
 from django.utils import timezone
 
 class CustomUserManager(BaseUserManager):
-    def create_user(self, phone_number, username=None, **extra_fields):
+    def create_user(self, phone_number, username, **extra_fields):
         if not phone_number:
             raise ValueError('Phone number is required')
+        if not username:
+            raise ValueError('Username is required')
+        
         user = self.model(phone_number=phone_number, username=username, **extra_fields)
         user.set_unusable_password() 
         user.save(using=self._db)
@@ -20,13 +23,14 @@ class CustomUserManager(BaseUserManager):
             raise ValueError('Superuser must have a username')
         if not password:
             raise ValueError('Superuser must have a password')
+        
         user = self.model(phone_number=phone_number, username=username, **extra_fields)
         user.set_password(password)
         user.save(using=self._db)
         return user
 
 class User(AbstractBaseUser, PermissionsMixin):
-    username = models.CharField(max_length=150, unique=True, null=True, blank=True)
+    username = models.CharField(max_length=150, unique=True)
     phone_number = models.CharField(max_length=15, unique=True)
     is_verified = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
@@ -35,9 +39,9 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     objects = CustomUserManager()
 
-    USERNAME_FIELD = 'username'
-    REQUIRED_FIELDS = ['phone_number']
-
+    USERNAME_FIELD = 'phone_number'
+    REQUIRED_FIELDS = ['username']
+    
     def __str__(self):
         return self.username if self.username else self.phone_number
 

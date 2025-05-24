@@ -1,4 +1,13 @@
 from pathlib import Path
+import os
+from decouple import config, Csv
+from datetime import tim
+
+
+SECRET_KEY = config('SECRET_KEY')
+DEBUG = config('DEBUG', default=False, cast=bool)
+ALLOWED_HOSTS = config('ALLOWED_HOSTS', cast=Csv())
+
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -6,14 +15,6 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-=)gf$mfdbl+nwgc0arl6g=2+q%-&nwszsuj%o0mt1*61h3$&a+'
-
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
-
-ALLOWED_HOSTS = ['127.0.0.1', 'localhost',
-                 '456d-2a0d-5600-32-9003-897f-c88d-94e5-510d.ngrok-free.app']
 
 CSRF_TRUSTED_ORIGINS = [
     "https://456d-2a0d-5600-32-9003-897f-c88d-94e5-510d.ngrok-free.app",
@@ -31,7 +32,9 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'rest_framework_simplejwt',
-    'main'
+    'rest_framework_simplejwt.token_blacklist',
+    'main',
+    'corsheaders'
 ]
 
 MIDDLEWARE = [
@@ -71,11 +74,11 @@ WSGI_APPLICATION = 'kanoon.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'kanoon',
-        'USER': 'root',
-        'PASSWORD': 'password123',
-        'HOST': 'localhost',
-        'PORT': '3306',
+        'NAME': config('DATABASE_NAME'),
+        'USER': config('DATABASE_USER'),
+        'PASSWORD': config('DATABASE_PASSWORD'),
+        'HOST': config('DATABASE_HOST', default='localhost'),
+        'PORT': config('DATABASE_PORT', default='3306'),
     }
 }
 
@@ -130,7 +133,7 @@ REST_FRAMEWORK = {
 # JWT Settings
 from datetime import timedelta
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
+    'ACCESS_TOKEN_LIFETIME': timedelta(days=7),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
     'ROTATE_REFRESH_TOKENS': False,
     'BLACKLIST_AFTER_ROTATION': True,
